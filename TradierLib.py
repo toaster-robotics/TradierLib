@@ -56,6 +56,7 @@ def get_historical_quote(symbol: str, start_date: str, end_date: str, resolution
 
     print('%s data not received' % symbol)
     print('\tResponse Code: %u' % response.status_code)
+    print('\tResponse Data: %s' % response.text)
     print('\tRatelimit Available: %s' %
           response.headers.get('X-Ratelimit-Available'))
     print('\tRatelimit Resets in: %ss' %
@@ -75,12 +76,13 @@ def get_historical_quotes(symbols: List[str], start_date: str, end_date: str, re
 def get_latest_quotes(symbols: List[str], greeks: bool = False) -> pd.DataFrame:
     endpoint = 'v1/markets/quotes'
     columns = ['symbol', 'description', 'exch', 'type', 'last', 'change', 'volume', 'open', 'high', 'low', 'close', 'bid', 'ask', 'change_percentage', 'average_volume',
-               'last_volume', 'trade_date', 'prevclose', 'week_52_high', 'week_52_low', 'bidsize', 'bidexch', 'bid_date', 'asksize', 'askexch', 'ask_date', 'root_symbols']
+               'last_volume', 'trade_date', 'prevclose', 'week_52_high', 'week_52_low', 'bidsize', 'bidexch', 'bid_date', 'asksize', 'askexch', 'ask_date', 'root_symbol']
     if greeks:
         columns += ['greeks.delta', 'greeks.gamma', 'greeks.theta', 'greeks.vega', 'greeks.rho', 'greeks.phi',
                     'greeks.bid_iv', 'greeks.mid_iv', 'greeks.ask_iv', 'greeks.smv_vol', 'greeks.updated_at']
+    syms = ','.join([i.upper() for i in symbols])
     params = {
-        'symbols': ','.join([i.upper() for i in symbols]),
+        'symbols': syms,
         'greeks': greeks,
     }
     headers = {
@@ -95,8 +97,86 @@ def get_latest_quotes(symbols: List[str], greeks: bool = False) -> pd.DataFrame:
         data = quotes.get('quote', [])
         data = data if isinstance(data, list) else [data]
         if len(data) > 0:
-            df = pd.DataFrame(data)
+            df = pd.json_normalize(data)
             df['trade_date'] = pd.to_datetime(df['trade_date'], unit='ms')
             df['bid_date'] = pd.to_datetime(df['bid_date'], unit='ms')
             df['ask_date'] = pd.to_datetime(df['ask_date'], unit='ms')
             return df[columns]
+
+    print('%s data not received' % syms)
+    print('\tResponse Code: %u' % response.status_code)
+    print('\tResponse Data: %s' % response.text)
+    print('\tRatelimit Available: %s' %
+          response.headers.get('X-Ratelimit-Available'))
+    print('\tRatelimit Resets in: %ss' %
+          (int(response.headers.get('X-Ratelimit-Expiry')) / 1000 - int(time.time())))
+    return pd.DataFrame(columns=columns)
+
+
+def get_chains(symbol: str, expiration: str, greeks: bool = True) -> pd.DataFrame:
+    endpoint = 'v1/markets/options/chains'
+    params = {
+        'symbol': symbol.upper(),
+        'expiration': expiration,
+        'greeks': greeks,
+    }
+    headers = {
+        'Accept': 'application/json',
+        'Authorization': 'Bearer %s' % API_KEY,
+    }
+    response = fetch_url(BASE_URL + endpoint, params, headers)
+    if response.status_code == 200:
+        json_response = response.json()
+        chains = json_response.get('options', {})
+        chains = chains if chains is not None else {}
+        data = chains.get('option', [])
+        data = data if isinstance(data, list) else [data]
+        if len(data) > 0:
+            df = pd.json_normalize(data)
+            print(df.columns)
+            df['trade_date'] = pd.to_datetime(df['trade_date'], unit='ms')
+            df['bid_date'] = pd.to_datetime(df['bid_date'], unit='ms')
+            df['ask_date'] = pd.to_datetime(df['ask_date'], unit='ms')
+            df['greeks.updated_at'] = pd.to_datetime(df['greeks.updated_at'])
+            return df
+
+    columns = ['symbol', 'description', 'exch', 'type', 'last', 'change', 'volume', 'open', 'high', 'low', 'close', 'bid', 'ask', 'underlying', 'strike', 'change_percentage', 'average_volume', 'last_volume', 'trade_date', 'prevclose', 'week_52_high', 'week_52_low', 'bidsize', 'bidexch', 'bid_date', 'asksize',
+               'askexch', 'ask_date', 'open_interest', 'contract_size', 'expiration_date', 'expiration_type', 'option_type', 'root_symbol', 'greeks.delta', 'greeks.gamma', 'greeks.theta', 'greeks.vega', 'greeks.rho', 'greeks.phi', 'greeks.bid_iv', 'greeks.mid_iv', 'greeks.ask_iv', 'greeks.smv_vol', 'greeks.updated_at']
+    print('%s data not received' % symbol)
+    print('\tResponse Code: %u' % response.status_code)
+    print('\tResponse Data: %s' % response.text)
+    print('\tRatelimit Available: %s' %
+          response.headers.get('X-Ratelimit-Available'))
+    print('\tRatelimit Resets in: %ss' %
+          (int(response.headers.get('X-Ratelimit-Expiry')) / 1000 - int(time.time())))
+    return pd.DataFrame(columns=columns)
+
+
+def get_strikes(symbol: str, expiration: str) -> List[float]:
+    endpoint = 'v1/markets/options/strikes'
+    params = {
+        'symbol': symbol.upper(),
+        'expiration': expiration,
+    }
+    headers = {
+        'Accept': 'application/json',
+        'Authorization': 'Bearer %s' % API_KEY,
+    }
+    response = fetch_url(BASE_URL + endpoint, params, headers)
+    if response.status_code == 200:
+        json_response = response.json()
+        data = json_response.get('strikes', {})
+        data = data if data is not None else {}
+        data = data.get('strike', [])
+        data = data if isinstance(data, list) else [data]
+        if len(data) > 0:
+            return data
+
+    print('%s data not received' % symbol)
+    print('\tResponse Code: %u' % response.status_code)
+    print('\tResponse Data: %s' % response.text)
+    print('\tRatelimit Available: %s' %
+          response.headers.get('X-Ratelimit-Available'))
+    print('\tRatelimit Resets in: %ss' %
+          (int(response.headers.get('X-Ratelimit-Expiry')) / 1000 - int(time.time())))
+    return []
