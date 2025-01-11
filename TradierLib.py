@@ -48,6 +48,7 @@ def get_historical_quote(symbol: str, start_date: str, end_date: str, resolution
         history = json_response.get('history', {})
         history = history if history is not None else {}
         data = history.get('day', [])
+        data = data if isinstance(data, list) else [data]
         if len(data) > 0:
             df = pd.DataFrame(data)
             df['date'] = pd.to_datetime(df['date']).dt.date
