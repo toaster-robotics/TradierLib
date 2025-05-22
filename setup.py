@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name="TradierLib",
-    version="0.1.2",
+    version="0.1.3",
     author="Jason",
     author_email="",
     description="Tradier Data API",

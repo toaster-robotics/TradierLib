@@ -1,28 +1,22 @@
 import TradierLib as tl
 
-with open('key') as f:
-    tl.API_KEY = f.readlines()[0].strip()
+# get balances
+balance_dict = tl.get_balances(
+    account_id='42069',
+)
+print(balance_dict)
 
-
-# get a single quote
-df = tl.get_historical_quote(
-    symbol='AAPL',
-    start_date='2024-08-01',
-    end_date='2024-08-15',
+# get positions
+df = tl.get_positions(
+    account_id='42069',
 )
 print(df)
 
-# get multiple quotes
-df = tl.get_historical_quotes(
-    symbols=['AAPL', 'TSLA', 'RKLB250417C00030000'],
+# get historical
+df = tl.get_historical(
+    symbols=['AAPL'],
     start_date='2024-08-01',
     end_date='2024-08-15',
-)
-print(df)
-
-
-# get latest quote
-df = tl.get_latest_quotes(
-    symbols=['AAPL', 'TSLA', 'RKLB250417C00030000'],
+    resolution='daily',
 )
 print(df)
