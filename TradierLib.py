@@ -58,6 +58,7 @@ def get_positions(account_id: str) -> pd.DataFrame:
         df = df[['symbol', 'date_acquired', 'quantity', 'cost_basis']]
         df = df.rename(columns={'quantity': 'shares'})
         df = df.set_index('symbol')
+        return df
     else:
         return pd.DataFrame()
 
